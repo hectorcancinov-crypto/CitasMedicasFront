@@ -150,14 +150,17 @@
             }
 
             citas.forEach(cita => {
+                // TODO: confirmar nombre de campo del id del paciente devuelto por la API
+                // (cita.id_paciente o cita.paciente_id). Se usa en notificarCitaAceptada().
+                const idPaciente = cita.id_paciente ?? cita.paciente_id ?? "";
                 const fila = `
                     <tr>
                         <td><strong>${cita.nombre_paciente || "Paciente"}</strong></td>
                         <td>${cita.motivo_cita || 'Sin motivo'}</td>
                         <td><span class="badge bg-warning text-dark">${cita.estado}</span></td>
                         <td>
-                            <button class="btn btn-success btn-sm" onclick="confirmarAccion(${cita.id_cita}, 'ACEPTADA')"><i class="fa fa-check"></i></button>
-                            <button class="btn btn-danger btn-sm" onclick="confirmarAccion(${cita.id_cita}, 'RECHAZADA')"><i class="fa fa-times"></i></button>
+                            <button class="btn btn-success btn-sm" onclick="confirmarAccion(${cita.id_cita}, 'ACEPTADA', '${idPaciente}')"><i class="fa fa-check"></i></button>
+                            <button class="btn btn-danger btn-sm" onclick="confirmarAccion(${cita.id_cita}, 'RECHAZADA', '${idPaciente}')"><i class="fa fa-times"></i></button>
                             <button class="btn btn-info btn-sm text-white" onclick='verDetalles(${JSON.stringify(cita)})'><i class="fa fa-eye"></i></button>
                         </td>
                     </tr>`;
@@ -168,18 +171,18 @@
         }
     }
 
-    function confirmarAccion(idCita, nuevoEstado) {
-        Swal.fire({ 
-            title: '¿Confirmar acción?', 
-            text: `La cita cambiará a ${nuevoEstado}`, 
-            icon: 'question', 
-            showCancelButton: true 
+    function confirmarAccion(idCita, nuevoEstado, idPaciente) {
+        Swal.fire({
+            title: '¿Confirmar acción?',
+            text: `La cita cambiará a ${nuevoEstado}`,
+            icon: 'question',
+            showCancelButton: true
         }).then((result) => {
-            if (result.isConfirmed) ejecutarCambioEstado(idCita, nuevoEstado);
+            if (result.isConfirmed) ejecutarCambioEstado(idCita, nuevoEstado, idPaciente);
         });
     }
 
-    async function ejecutarCambioEstado(idCita, nuevoEstado) {
+    async function ejecutarCambioEstado(idCita, nuevoEstado, idPaciente) {
         try {
             const res = await fetch(`${apiBase}/citas/${idCita}/estado`, {
                 method: 'PUT',
@@ -188,9 +191,29 @@
             });
             if (res.ok) {
                 Swal.fire({ title: '¡Éxito!', icon: 'success', timer: 1000, showConfirmButton: false });
-                cargarCitas(); 
+                if (nuevoEstado === 'ACEPTADA' && idPaciente) {
+                    const doctorName = document.getElementById("nombreDocDisplay").innerText.replace(/^Dr\.\s*/, "");
+                    notificarCitaAceptada(idPaciente, idCita, doctorName);
+                }
+                cargarCitas();
             }
         } catch (error) { Swal.fire('Error', 'Servidor no disponible', 'error'); }
+    }
+
+    async function notificarCitaAceptada(patientId, appointmentId, doctorName) {
+        try {
+            const r = await fetch("/api/notify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ patientId, appointmentId, doctorName })
+            });
+            const data = await r.json();
+            if (!data.ok) console.error("notify failed:", data.error);
+            return data;
+        } catch (e) {
+            console.error("notify network error:", e);
+            return { ok: false, error: e.message };
+        }
     }
 
     function verDetalles(cita) {
