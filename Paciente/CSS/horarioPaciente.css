@@ -1,0 +1,45 @@
+body {
+    font-family: Arial;
+    background: #f4f6f9;
+    padding: 20px;
+}
+
+table {
+    width: 100%;
+    background: white;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px;
+    border-bottom: 1px solid #ddd;
+}
+
+button {
+    background: #198754;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+}
+
+@media (max-width:768px){
+
+.sidebar{
+left:-250px;
+top:0;
+width:250px;
+height:100%;
+z-index:1000;
+}
+
+.sidebar.active{
+left:0;
+}
+
+.content{
+margin-left:0;
+padding:15px;
+}
+
+}

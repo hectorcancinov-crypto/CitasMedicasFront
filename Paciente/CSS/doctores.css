@@ -1,0 +1,165 @@
+body{
+margin:0;
+background:#f4f6f9;
+font-family: 'Poppins', sans-serif;
+}
+
+/* SIDEBAR */
+.sidebar{
+width:240px;
+height:100vh;
+background:#4db6ac;
+position:fixed;
+color:white;
+padding-top:20px;
+transition:0.3s;
+z-index:1000;
+}
+
+.sidebar a{
+display:block;
+color:white;
+padding:12px 20px;
+text-decoration:none;
+}
+
+.sidebar a:hover{
+background:#00838f;
+}
+
+/* OVERLAY para móvil */
+.overlay{
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.4);
+z-index:999;
+}
+
+.overlay.active{
+display:block;
+}
+
+/* CONTENIDO */
+.content{
+margin-left:240px;
+padding:30px;
+transition:0.3s;
+}
+
+/* TOPBAR */
+.topbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.topbar .left{
+display:flex;
+align-items:center;
+gap:10px;
+}
+
+/* BOTÓN MENU */
+.btn-menu{
+background:none;
+border:none;
+font-size:22px;
+cursor:pointer;
+}
+
+/* NOTIFICACIÓN */
+.notificacion{
+font-size:20px;
+cursor:pointer;
+background:white;
+padding:10px;
+border-radius:50%;
+}
+
+/* CARD DOCTOR */
+.card-doctor{
+background:white;
+border-radius:12px;
+padding:20px;
+box-shadow:0 4px 15px rgba(0,0,0,0.1);
+text-align:center;
+transition:0.3s;
+}
+
+.card-doctor:hover{
+transform:translateY(-5px);
+}
+
+.avatar{
+width:80px;
+height:80px;
+border-radius:50%;
+background:#4db6ac;
+display:flex;
+align-items:center;
+justify-content:center;
+color:white;
+font-size:30px;
+margin:0 auto 10px;
+}
+
+/* NOTIFICACIÓN */
+.mensaje-noti{
+position:fixed;
+top:20px;
+right:20px;
+background:#4db6ac;
+color:white;
+padding:15px 20px;
+border-radius:10px;
+display:none;
+z-index:9999;
+max-width:calc(100% - 40px);
+}
+
+/* RESPONSIVE */
+@media (max-width:768px){
+
+.sidebar{
+left:-260px;
+width:250px;
+height:100%;
+position:fixed;
+}
+
+.sidebar.active{
+left:0;
+}
+
+.content{
+margin-left:0;
+padding:15px;
+}
+
+.topbar h2{
+font-size:1.2rem;
+}
+
+/* 2 columnas en móvil para las cards */
+.col-md-4{
+width:50%;
+}
+
+}
+
+/* Pantallas muy pequeñas: 1 columna */
+@media (max-width:480px){
+
+.col-md-4{
+width:100%;
+}
+
+.topbar h2{
+font-size:1rem;
+}
+
+}

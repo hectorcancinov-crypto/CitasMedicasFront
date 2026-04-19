@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Doctor - ClinicApp</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body { margin:0; background:#f4f6f9; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+        
+        /* SIDEBAR - IDÉNTICO A TU DISEÑO */
+        .sidebar { width:240px; height:100vh; background:#4db6ac; position:fixed; color:white; padding-top:20px; transition:0.3s; z-index:1000; left: 0; }
+        .sidebar.active { left: -240px; }
+        .sidebar h4 { text-align:center; font-weight:bold; }
+        .sidebar a { display:block; color:white; padding:12px 20px; text-decoration:none; transition:0.3s; }
+        .sidebar a:hover, .sidebar a.active { background:#00838f; }
+        
+        /* CONTENIDO */
+        .content { margin-left:240px; padding:30px; transition:0.3s; min-height: 100vh; }
+        .content.active { margin-left: 0; }
+
+        .topbar { display:flex; justify-content:space-between; align-items:center; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        /* BOTÓN HAMBURGUESA - TU ESTILO */
+        .btn-menu { background: #4db6ac; border: none; color: white; font-size: 20px; cursor: pointer; padding: 5px 12px; border-radius: 5px; display: block !important; }
+        .btn-menu:hover { background: #00838f; }
+
+        .notificacion { font-size:20px; cursor:pointer; background:#f4f6f9; padding:10px; border-radius:50%; }
+
+        /* TARJETAS DE ESTADÍSTICAS */
+        .card-stats { border: none; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .verde-borde { border-left: 6px solid #4db6ac; }
+        .naranja-borde { border-left: 6px solid #ff9800; }
+
+        @media (max-width:768px) {
+            .sidebar { left:-240px; }
+            .sidebar.active { left:0; }
+            .content { margin-left:0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+    <h4 class="text-center">ClinicApp</h4>
+    <hr>
+    <a href="inicio.html" class="active"><i class="fa fa-home"></i> Inicio</a>
+    <a href="Citas_Solicitadas.html"><i class="fa fa-calendar"></i> Citas</a>
+    <a href="AgragarHora.html"><i class="fa fa-clock"></i> Horarios</a>
+    <a href="Info_personal.html"><i class="fa fa-user-md"></i> Información</a>
+    <a href="PerfilDoc.html"><i class="fa fa-user"></i> Perfil</a>
+    <a href="../login.html" onclick="localStorage.clear()" class="text-danger"><i class="fa fa-sign-out-alt"></i> Cerrar sesión</a>
+</div>
+
+<div class="content" id="content">
+    <div class="topbar">
+        <div class="d-flex align-items-center gap-3">
+            <button id="btnMenu" class="btn-menu"><i class="fa fa-bars"></i></button>
+            <h2 class="m-0" style="font-size: 1.5rem;">Panel del Doctor</h2>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <i class="fa fa-bell notificacion" id="campana"></i>
+            <span id="nombreDocDisplay" style="font-weight:600; color:#4db6ac;">Doctor</span>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6 mb-3">
+            <div class="card card-stats verde-borde bg-white">
+                <h6 class="text-muted">CITAS PARA HOY</h6>
+                <h2 id="numHoy" class="fw-bold m-0">0</h2>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card card-stats naranja-borde bg-white">
+                <h6 class="text-muted">CITAS PENDIENTES</h6>
+                <h2 id="numPendientes" class="fw-bold m-0">0</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-2 p-4 border-0 shadow-sm">
+        <h5>Actividad Reciente</h5>
+        <hr>
+        <div id="contenedorActividad">
+            <p class="text-muted">Cargando información...</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    // Usamos id_doctor que guardamos en el login corregido
+    const idDoctor = localStorage.getItem("id_doctor");
+    const apiBase = "https://clinicaapi-production.up.railway.app";
+
+    document.addEventListener("DOMContentLoaded", () => {
+        // SEGURIDAD: Si no hay ID, al login de cabeza
+        if (!idDoctor || idDoctor === "undefined" || idDoctor === "null") {
+            window.location.href = "../login.html";
+            return;
+        }
+
+        // 1. CARGAR DATOS REALES
+        cargarNombreReal();
+        cargarDashboardDoctor();
+
+        // 2. LÓGICA HAMBURGUESA
+        const btnMenu = document.getElementById("btnMenu");
+        if (btnMenu) {
+            btnMenu.onclick = () => {
+                document.getElementById("sidebar").classList.toggle("active");
+                document.getElementById("content").classList.toggle("active");
+            };
+        }
+
+        // 3. LÓGICA CAMPANA
+        const campana = document.getElementById("campana");
+        if (campana) {
+            campana.onclick = () => {
+                const pendientes = document.getElementById("numPendientes").innerText;
+                const mensaje = (pendientes !== "0") 
+                    ? `Tienes ${pendientes} citas nuevas por revisar.` 
+                    : 'No hay notificaciones nuevas.';
+                
+                Swal.fire({ 
+                    title: 'Notificaciones', 
+                    text: mensaje, 
+                    icon: 'info', 
+                    timer: 2000, 
+                    showConfirmButton: false 
+                });
+            };
+        }
+    });
+
+    async function cargarNombreReal() {
+        try {
+            // Intentamos traer el nombre del perfil
+            const res = await fetch(`${apiBase}/doctores/${idDoctor}/perfil`);
+            if (res.ok) {
+                const d = await res.json();
+                document.getElementById("nombreDocDisplay").innerText = "Dr. " + (d.nombre || "Profesional");
+            } else {
+                // Si falla el endpoint, usamos el nombre que guardamos en el login por si acaso
+                const nombreGuardado = localStorage.getItem("nombreUsuario");
+                document.getElementById("nombreDocDisplay").innerText = "Dr. " + (nombreGuardado || "Doctor");
+            }
+        } catch (e) { 
+            console.log("Perfil no disponible, usando genérico.");
+        }
+    }
+
+    async function cargarDashboardDoctor() {
+        const numHoy = document.getElementById("numHoy");
+        const numPendientes = document.getElementById("numPendientes");
+        const contenedor = document.getElementById("contenedorActividad");
+
+        try {
+            // Consumimos el endpoint de citas del doctor
+            const response = await fetch(`${apiBase}/doctores/${idDoctor}/citas`);
+            
+            if (response.ok) {
+                const citas = await response.json();
+                
+                if (!citas || citas.length === 0) {
+                    numHoy.innerText = "0";
+                    numPendientes.innerText = "0";
+                    contenedor.innerHTML = `<p class="text-success"><i class="fa fa-check-circle"></i> Todo al día. No hay citas registradas.</p>`;
+                    return;
+                }
+
+                // Obtener fecha actual en formato YYYY-MM-DD (asumiendo que así viene en tu DB)
+                const hoy = new Date().toISOString().split('T')[0];
+
+                // FILTROS REALES
+                const citasDeHoy = citas.filter(c => c.fecha === hoy).length;
+                const citasPendientes = citas.filter(c => c.estado === "PENDIENTE").length;
+
+                // Actualizar UI
+                numHoy.innerText = citasDeHoy;
+                numPendientes.innerText = citasPendientes;
+
+                if (citasPendientes > 0) {
+                    contenedor.innerHTML = `
+                        <div class="alert alert-warning border-0 shadow-sm">
+                            <i class="fa fa-clock"></i> Tienes <strong>${citasPendientes}</strong> solicitudes de pacientes esperando respuesta.
+                        </div>
+                    `;
+                } else {
+                    contenedor.innerHTML = `<p class="text-success"><i class="fa fa-check-circle"></i> No tienes citas pendientes de revisión.</p>`;
+                }
+
+            } else {
+                throw new Error("Error en servidor");
+            }
+        } catch (error) {
+            console.error("Error al cargar dashboard:", error);
+            numHoy.innerText = "--";
+            numPendientes.innerText = "--";
+            contenedor.innerHTML = `<p class="text-danger">Servidor fuera de línea.</p>`;
+        }
+    }
+</script>

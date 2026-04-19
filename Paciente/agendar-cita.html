@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendar Cita - ClinicApp</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="./CSS/agendar-cita.css" rel="stylesheet">
+    <style>
+        body { margin:0; background:#f4f6f9; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+        
+        /* SIDEBAR UNIFICADO */
+        .sidebar { width:240px; height:100vh; background:#4db6ac; position:fixed; color:white; padding-top:20px; transition:0.3s; z-index:1000; left: 0; }
+        .sidebar.active { left: -240px; }
+        .sidebar h4 { text-align:center; font-weight:bold; }
+        .sidebar a { display:block; color:white; padding:12px 20px; text-decoration:none; transition:0.3s; }
+        .sidebar a:hover, .sidebar a.active { background:#00838f; }
+        
+        /* CONTENIDO */
+        .content { margin-left:240px; padding:30px; transition:0.3s; min-height: 100vh; }
+        .content.active { margin-left: 0; }
+
+        .topbar { display:flex; justify-content:space-between; align-items:center; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        .btn-menu { background: #4db6ac; border: none; color: white; font-size: 20px; cursor: pointer; padding: 5px 12px; border-radius: 5px; display: block !important; }
+        .btn-menu:hover { background: #00838f; }
+
+        .notificacion { font-size:20px; cursor:pointer; background:#f4f6f9; padding:10px; border-radius:50%; transition: 0.3s; }
+
+        @media (max-width:768px) {
+            .sidebar { left:-240px; }
+            .sidebar.active { left:0; }
+            .content { margin-left:0; }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="sidebar" id="sidebar">
+    <h4 class="text-center">ClinicApp</h4>
+    <hr>
+    <a href="inicio.html"><i class="fa fa-home"></i> Inicio</a>
+    <a href="doctores.html"><i class="fa fa-user-md"></i> Ver doctores</a>
+    <a href="agendar-cita.html" class="active"><i class="fa fa-calendar-plus"></i> Agendar cita</a>
+    <a href="estadocita.html"><i class="fa fa-clock"></i> Estado de cita</a>
+    <a href="perfil.html"><i class="fa fa-user"></i> Perfil</a>
+    <hr>
+    <a href="../login.html" onclick="localStorage.clear()" class="text-danger"><i class="fa fa-sign-out-alt"></i> Cerrar sesión</a>
+</div>
+
+<div class="content" id="content">
+    <div class="topbar">
+        <div class="d-flex align-items-center gap-3">
+            <button id="btnMenu" class="btn-menu"><i class="fa fa-bars"></i></button>
+            <h2 class="m-0" style="font-size: 1.5rem;">Agendar cita</h2>
+        </div>
+        <div class="d-flex align-items-center">
+            <i class="fa fa-bell notificacion" id="campana"></i>
+        </div>
+    </div>
+
+    <p class="mt-4">Selecciona un horario disponible y escribe el motivo:</p>
+
+    <div class="mb-3">
+        <textarea id="motivoCita" class="form-control" placeholder="Ej: Dolor de cabeza persistente..." rows="2"></textarea>
+    </div>
+
+    <div id="listaHorarios" class="mt-4 row gap-2 px-3">
+        <p class="text-muted">Cargando horarios del doctor...</p>
+    </div>
+
+    <button class="btn btn-success w-100 mt-4 py-2" onclick="agendarCita()">
+        Confirmar cita
+    </button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    const API_URL = "https://clinicaapi-production.up.railway.app";
+    
+    // 1. OJO: Usamos id_paciente (el ID de la tabla pacientes, no el de usuario)
+    const idPaciente = localStorage.getItem("id_paciente"); 
+    const idDoctor = localStorage.getItem("id_doctor_elegido"); 
+    const contenedor = document.getElementById("listaHorarios");
+
+    let idHorarioSeleccionado = null;
+    let horarioObjeto = null; 
+
+    document.addEventListener("DOMContentLoaded", () => {
+        // --- LÓGICA MENÚ LATERAL ---
+        const btnMenu = document.getElementById("btnMenu");
+        const sidebar = document.getElementById("sidebar");
+        const content = document.getElementById("content");
+
+        if (btnMenu) {
+            btnMenu.onclick = () => {
+                sidebar.classList.toggle("active");
+                content.classList.toggle("active");
+            };
+        }
+
+        // --- LÓGICA CAMPANITA (Notificaciones) ---
+        const campana = document.getElementById("campana");
+        if (campana) {
+            campana.onclick = () => {
+                Swal.fire({
+                    title: 'Recordatorio',
+                    text: 'Selecciona un horario disponible para que el doctor pueda atenderte.',
+                    icon: 'info',
+                    confirmButtonColor: '#4db6ac'
+                });
+            };
+        }
+
+        cargarHorarios();
+    });
+
+    // --- CARGAR HORARIOS DEL DOCTOR ---
+    async function cargarHorarios() {
+        if (!idDoctor || idDoctor === "undefined") {
+            Swal.fire('Error', 'No se detectó un doctor seleccionado.', 'warning')
+                .then(() => { window.location.href = "doctores.html"; });
+            return;
+        }
+
+        try {
+            const resp = await fetch(`${API_URL}/doctores/${idDoctor}/horarios`);
+            if (!resp.ok) throw new Error("Error en servidor");
+            const horarios = await resp.json();
+            
+            contenedor.innerHTML = "";
+            if (!horarios || horarios.length === 0) {
+                contenedor.innerHTML = "<p class='text-muted'>Sin horarios disponibles por ahora.</p>";
+                return;
+            }
+
+            horarios.forEach(h => {
+                const div = document.createElement("div");
+                div.className = "card-horario col-md-3 p-3 border rounded text-center m-1"; 
+                div.style.cursor = "pointer";
+                div.style.transition = "0.3s";
+                div.innerHTML = `<strong>${h.dia_semana}</strong><br>${h.hora_inicio}`;
+                
+                div.onclick = () => {
+                    document.querySelectorAll(".card-horario").forEach(c => {
+                        c.style.background = "white";
+                        c.style.color = "black";
+                    });
+                    div.style.background = "#4db6ac"; 
+                    div.style.color = "white";
+                    
+                    idHorarioSeleccionado = h.id_horario;
+                    horarioObjeto = h; 
+                };
+                contenedor.appendChild(div);
+            });
+        } catch (error) {
+            contenedor.innerHTML = "<p class='text-danger'>Error al conectar con la API.</p>";
+        }
+    }
+
+    // --- FUNCIÓN AGENDAR (Sincronizada con Cita.java) ---
+    async function agendarCita() {
+        const motivoInput = document.getElementById("motivoCita");
+        const motivo = motivoInput ? motivoInput.value : "";
+
+        if (!idHorarioSeleccionado || !horarioObjeto) {
+            Swal.fire('Atención', 'Por favor selecciona un horario.', 'info');
+            return;
+        }
+        if (!motivo.trim()) {
+            Swal.fire('Campo obligatorio', 'Escribe el motivo de la cita.', 'info');
+            return;
+        }
+
+        // MAPEO EXACTO A LOS CAMPOS DE TU CLASE JAVA
+        const citaData = {
+            id_cita: parseInt(idHorarioSeleccionado), 
+            id_paciente: parseInt(idPaciente),
+            id_doctor: parseInt(idDoctor),
+            motivo_cita: motivo.trim(),
+            estado: "PENDIENTE",
+            fecha: horarioObjeto.dia_semana, 
+            hora: horarioObjeto.hora_inicio   
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/pacientes/agendar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(citaData)
+            });
+
+            if (response.ok) {
+                Swal.fire({
+                    title: '¡Cita Agendada!',
+                    text: 'Tu solicitud se envió correctamente.',
+                    icon: 'success',
+                    confirmButtonColor: '#4db6ac'
+                }).then(() => { window.location.href = "inicio.html"; });
+            } else {
+                const dataError = await response.json();
+                Swal.fire('Error', dataError.error || 'No se pudo agendar.', 'error');
+            }
+        } catch (error) {
+            Swal.fire('Error', 'Sin conexión con el servidor.', 'error');
+        }
+    }
+</script>

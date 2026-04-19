@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Citas solicitadas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="./CSS/Iniciod.css">
+    <style>
+        body { margin:0; background:#f4f6f9; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+        
+        /* SIDEBAR - Igual a Gestión de Horarios */
+        .sidebar { width:240px; height:100vh; background:#4db6ac; position:fixed; color:white; padding-top:20px; transition:0.3s; z-index:1000; left: 0; }
+        .sidebar.active { left: -240px; }
+        .sidebar h4 { text-align:center; font-weight:bold; }
+        .sidebar a { display:block; color:white; padding:12px 20px; text-decoration:none; transition:0.3s; }
+        .sidebar a:hover, .sidebar a.active { background:#00838f; }
+        
+        /* CONTENIDO */
+        .content { margin-left:240px; padding:30px; transition:0.3s; min-height: 100vh; }
+        .content.active { margin-left: 0; }
+
+        .topbar { display:flex; justify-content:space-between; align-items:center; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        /* BOTÓN HAMBURGUESA */
+        .btn-menu { background: #4db6ac; border: none; color: white; font-size: 20px; cursor: pointer; padding: 5px 12px; border-radius: 5px; display: block !important; }
+        .btn-menu:hover { background: #00838f; }
+
+        .notificacion { font-size:20px; cursor:pointer; background:#f4f6f9; padding:10px; border-radius:50%; }
+        .status-pendiente { color: #ff9800; font-weight: bold; }
+
+        @media (max-width:768px) {
+            .sidebar { left:-240px; }
+            .sidebar.active { left:0; }
+            .content { margin-left:0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+    <h4 class="text-center">ClinicApp</h4>
+    <hr>
+    <a href="inicio.html"><i class="fa fa-home"></i> Inicio</a>
+    <a href="Citas_Solicitadas.html" class="active"><i class="fa fa-calendar"></i> Citas</a>
+    <a href="AgragarHora.html"><i class="fa fa-clock"></i> Horarios</a>
+    <a href="Info_personal.html"><i class="fa fa-user-md"></i> Información</a>
+    <a href="PerfilDoc.html"><i class="fa fa-user"></i> Perfil</a>
+    <a href="../login.html" onclick="localStorage.clear()" class="text-danger"><i class="fa fa-sign-out-alt"></i> Cerrar sesión</a>
+</div>
+
+<div class="content" id="content">
+    <div class="topbar">
+        <div class="d-flex align-items-center gap-3">
+            <button id="btnMenu" class="btn-menu"><i class="fa fa-bars"></i></button>
+            <h2 class="m-0" style="font-size: 1.5rem;">Citas solicitadas</h2>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <i class="fa fa-bell notificacion" id="campana"></i>
+            <span id="nombreDocDisplay" style="font-weight:600; color:#4db6ac;">Doctor</span>
+        </div>
+    </div>
+
+    <div class="card mt-4 p-3 border-0 shadow-sm">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Paciente</th>
+                    <th>Motivo</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaCitas">
+                <tr>
+                    <td colspan="4" class="text-center">Cargando citas...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPaciente" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalles de la Cita</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detallePacienteBody"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    // CORRECCIÓN: Usamos id_doctor para que el Backend responda con datos
+    const idDoctor = localStorage.getItem("id_doctor");
+    const apiBase = "https://clinicaapi-production.up.railway.app";
+
+    document.addEventListener("DOMContentLoaded", () => {
+        if (!idDoctor || idDoctor === "undefined") {
+            window.location.href = "../login.html";
+            return;
+        }
+
+        // Cargamos el nombre real del servidor
+        cargarNombreDoctor();
+        cargarCitas();
+
+        // LÓGICA HAMBURGUESA
+        const btnMenu = document.getElementById("btnMenu");
+        if (btnMenu) {
+            btnMenu.onclick = () => {
+                document.getElementById("sidebar").classList.toggle("active");
+                document.getElementById("content").classList.toggle("active");
+            };
+        }
+
+        // CAMPANA
+        document.getElementById("campana").onclick = () => {
+            Swal.fire({ title: 'Notificaciones', text: 'Todo al día.', icon: 'info', timer: 2000, showConfirmButton: false });
+        };
+    });
+
+    async function cargarNombreDoctor() {
+        try {
+            const res = await fetch(`${apiBase}/doctores/${idDoctor}/perfil`);
+            if (res.ok) {
+                const d = await res.json();
+                document.getElementById("nombreDocDisplay").innerText = "Dr. " + (d.nombre || "Doctor");
+            }
+        } catch (e) { console.error("Error al cargar nombre:", e); }
+    }
+
+    async function cargarCitas() {
+        const tabla = document.getElementById("tablaCitas");
+        try {
+            const response = await fetch(`${apiBase}/doctores/${idDoctor}/citas`);
+            if (!response.ok) throw new Error("Error en la respuesta");
+            const citas = await response.json();
+            tabla.innerHTML = ""; 
+            
+            if (!citas || citas.length === 0) {
+                tabla.innerHTML = `<tr><td colspan="4" class="text-center">No tienes citas pendientes</td></tr>`;
+                return;
+            }
+
+            citas.forEach(cita => {
+                const fila = `
+                    <tr>
+                        <td><strong>${cita.nombre_paciente || "Paciente"}</strong></td>
+                        <td>${cita.motivo_cita || 'Sin motivo'}</td>
+                        <td><span class="badge bg-warning text-dark">${cita.estado}</span></td>
+                        <td>
+                            <button class="btn btn-success btn-sm" onclick="confirmarAccion(${cita.id_cita}, 'ACEPTADA')"><i class="fa fa-check"></i></button>
+                            <button class="btn btn-danger btn-sm" onclick="confirmarAccion(${cita.id_cita}, 'RECHAZADA')"><i class="fa fa-times"></i></button>
+                            <button class="btn btn-info btn-sm text-white" onclick='verDetalles(${JSON.stringify(cita)})'><i class="fa fa-eye"></i></button>
+                        </td>
+                    </tr>`;
+                tabla.innerHTML += fila;
+            });
+        } catch (error) {
+            tabla.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error al conectar con la API</td></tr>`;
+        }
+    }
+
+    function confirmarAccion(idCita, nuevoEstado) {
+        Swal.fire({ 
+            title: '¿Confirmar acción?', 
+            text: `La cita cambiará a ${nuevoEstado}`, 
+            icon: 'question', 
+            showCancelButton: true 
+        }).then((result) => {
+            if (result.isConfirmed) ejecutarCambioEstado(idCita, nuevoEstado);
+        });
+    }
+
+    async function ejecutarCambioEstado(idCita, nuevoEstado) {
+        try {
+            const res = await fetch(`${apiBase}/citas/${idCita}/estado`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: nuevoEstado })
+            });
+            if (res.ok) {
+                Swal.fire({ title: '¡Éxito!', icon: 'success', timer: 1000, showConfirmButton: false });
+                cargarCitas(); 
+            }
+        } catch (error) { Swal.fire('Error', 'Servidor no disponible', 'error'); }
+    }
+
+    function verDetalles(cita) {
+        document.getElementById("detallePacienteBody").innerHTML = `
+            <p><strong>Paciente:</strong> ${cita.nombre_paciente}</p>
+            <p><strong>Motivo:</strong> ${cita.motivo_cita}</p>
+            <p><strong>Estado:</strong> ${cita.estado}</p>`;
+        new bootstrap.Modal(document.getElementById('modalPaciente')).show();
+    }
+</script>
+</body>
+</html>

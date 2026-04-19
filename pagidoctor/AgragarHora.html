@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horarios - ClinicApp</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="./CSS/Iniciod.css">
+    <style>
+        body { margin:0; background:#f4f6f9; font-family: 'Poppins', sans-serif; }
+        
+        /* SIDEBAR - Igual al de Información Profesional */
+        .sidebar { width:240px; height:100vh; background:#4db6ac; position:fixed; color:white; padding-top:20px; transition:0.3s; z-index:1000; left: 0; }
+        .sidebar.active { left: -240px; }
+        
+        .sidebar h4 { text-align:center; font-weight:bold; }
+        .sidebar a { display:block; color:white; padding:12px 20px; text-decoration:none; transition:0.3s; }
+        .sidebar a:hover, .sidebar a.active { background:#00838f; }
+        
+        /* CONTENIDO */
+        .content { margin-left:240px; padding:30px; transition:0.3s; min-height: 100vh; }
+        .content.active { margin-left: 0; }
+
+        .topbar { display:flex; justify-content:space-between; align-items:center; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        /* BOTÓN HAMBURGUESA - Forzado para que siempre se vea */
+        .btn-menu { background: #4db6ac; border: none; color: white; font-size: 20px; cursor: pointer; padding: 5px 12px; border-radius: 5px; transition: 0.3s; display: block !important; }
+        .btn-menu:hover { background: #00838f; }
+
+        .notificacion { font-size:20px; cursor:pointer; background:#f4f6f9; padding:10px; border-radius:50%; transition: 0.3s; }
+        .mensaje-noti { position:fixed; top:20px; right:20px; background:#4db6ac; color:white; padding:15px 20px; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.2); display:none; z-index:9999; }
+
+        @media (max-width:768px) {
+            .sidebar { left:-240px; }
+            .sidebar.active { left:0; }
+            .content { margin-left:0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+    <h4 class="text-center">ClinicApp</h4>
+    <hr>
+    <a href="inicio.html"><i class="fa fa-home"></i> Inicio</a>
+    <a href="Citas_Solicitadas.html"><i class="fa fa-calendar"></i> Citas</a>
+    <a href="AgragarHora.html" class="active"><i class="fa fa-clock"></i> Horarios</a>
+    <a href="Info_personal.html"><i class="fa fa-user-md"></i> Información</a>
+    <a href="PerfilDoc.html"><i class="fa fa-user"></i> Perfil</a>
+    <a href="../login.html" onclick="localStorage.clear()" class="text-danger"><i class="fa fa-sign-out-alt"></i> Cerrar sesión</a>
+</div>
+
+<div class="content" id="content">
+    <div class="topbar">
+        <div class="d-flex align-items-center gap-3">
+            <button id="btnMenu" class="btn-menu"><i class="fa fa-bars"></i></button>
+            <h2 class="m-0" style="font-size: 1.5rem;">Gestión de Horarios</h2>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <i class="fa fa-bell notificacion" id="campana"></i>
+            <span id="nombreDocDisplay" style="font-weight:600; color:#4db6ac;">Doctor</span>
+        </div>
+    </div>
+
+    <div id="mensajeNoti" class="mensaje-noti"></div>
+
+    <div class="card mt-4 p-4 border-0 shadow-sm">
+        <h5><i class="fa fa-plus-circle"></i> Publicar nuevo horario</h5>
+        <form id="formHorario">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Día de la semana</label>
+                    <select id="dia" class="form-select" required>
+                        <option value="Lunes">Lunes</option>
+                        <option value="Martes">Martes</option>
+                        <option value="Miércoles">Miércoles</option>
+                        <option value="Jueves">Jueves</option>
+                        <option value="Viernes">Viernes</option>
+                        <option value="Sábado">Sábado</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Hora inicio</label>
+                    <input type="time" id="inicio" class="form-control" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Hora fin</label>
+                    <input type="time" id="fin" class="form-control" required>
+                </div>
+           </div>
+       <button type="submit" class="btn btn-success w-100 mt-3 py-2">
+           Guardar horario 
+        </button> 
+        </form>
+    </div>
+
+    <div class="card mt-4 p-3 border-0 shadow-sm">
+        <h5>Mis horarios registrados</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Día</th>
+                        <th>Rango de Horas</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaHorarios">
+                    <tr><td colspan="4" class="text-center text-muted">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    const idDoctor = localStorage.getItem("id_doctor");
+    const apiBase = "https://clinicaapi-production.up.railway.app";
+
+    document.addEventListener("DOMContentLoaded", () => {
+        if (!idDoctor || idDoctor === "undefined") {
+            window.location.href = "../login.html";
+            return;
+        }
+        
+        cargarNombreReal();
+        cargarHorarios();
+
+        // Hamburguesa
+        const btnMenu = document.getElementById("btnMenu");
+        if(btnMenu) {
+            btnMenu.onclick = () => {
+                document.getElementById("sidebar").classList.toggle("active");
+                document.getElementById("content").classList.toggle("active");
+            };
+        }
+
+        // Campana
+        document.getElementById("campana").onclick = () => {
+            Swal.fire({ title: 'Aviso', text: 'Sin notificaciones nuevas.', icon: 'info', timer: 1500, showConfirmButton: false });
+        };
+    });
+
+    async function cargarNombreReal() {
+        try {
+            const res = await fetch(`${apiBase}/doctores/${idDoctor}/perfil`);
+            if (res.ok) {
+                const d = await res.json();
+                document.getElementById("nombreDocDisplay").innerText = "Dr. " + (d.nombre || "Doctor");
+            }
+        } catch (e) { console.error("Error al cargar nombre:", e); }
+    }
+
+    async function cargarHorarios() {
+        const tabla = document.getElementById("tablaHorarios");
+        try {
+            const res = await fetch(`${apiBase}/doctores/${idDoctor}/horarios`);
+            if (!res.ok) throw new Error("Error al obtener datos");
+            
+            const horarios = await res.json();
+            tabla.innerHTML = "";
+
+            if (!horarios || horarios.length === 0) {
+                tabla.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No tienes horarios registrados</td></tr>`;
+                return;
+            }
+
+            horarios.forEach(h => {
+                tabla.innerHTML += `
+                    <tr>
+                        <td><strong>${h.dia_semana}</strong></td>
+                        <td>${h.hora_inicio} - ${h.hora_fin}</td>
+                        <td><span class="badge bg-info">Disponible</span></td>
+                        <td>
+                            <button class="btn btn-outline-danger btn-sm" onclick="eliminarHorario(${h.id_horario})">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+        } catch (e) {
+            tabla.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error de conexión</td></tr>`;
+        }
+    }
+
+    document.getElementById("formHorario").onsubmit = async (e) => {
+        e.preventDefault();
+        const data = {
+            id_doctor: parseInt(idDoctor),
+            dia_semana: document.getElementById("dia").value,
+            hora_inicio: document.getElementById("inicio").value,
+            hora_fin: document.getElementById("fin").value
+        };
+
+        try {
+            const res = await fetch(`${apiBase}/horarios`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },    
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                Swal.fire({ icon: 'success', title: '¡Horario Guardado!', timer: 1500, showConfirmButton: false });
+                document.getElementById("formHorario").reset();
+                cargarHorarios();
+            } else {
+                Swal.fire("Error", "No se pudo guardar el horario. Revisa los datos.", "error");
+            }
+        } catch (e) { Swal.fire("Sin conexión", "No se pudo conectar con el servidor en la nube.");
+
+        }
+    };
+
+    async function eliminarHorario(id) {
+        const result = await Swal.fire({ 
+            title: '¿Eliminar horario?', 
+            text: "Se quitará de tu lista y los pacientes ya no podrán verlo.",
+            icon: 'warning', 
+            showCancelButton: true, 
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`${apiBase}/horarios/${id}`, { method: 'DELETE' });
+                
+                if (res.ok) { 
+                    Swal.fire({
+                        title: "¡Eliminado!",
+                        text: "El horario ha sido borrado correctamente.",
+                        icon: "success",
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    cargarHorarios(); 
+                } else {
+                    // Aquí es donde atrapamos el error de la cita vinculada
+                    Swal.fire({
+                        title: "No se puede eliminar",
+                        text: "Este horario tiene una cita agendada. Por seguridad del paciente, no puede borrarse.",
+                        icon: "info",
+                        confirmButtonColor: '#00838f'
+                    });
+                }
+            } catch (e) { 
+                Swal.fire({
+                    title: "Error de red",
+                    text: "Hubo un problema al intentar conectar con el servidor.",
+                    icon: "error"
+                }); 
+            }
+        }
+    }
+</script>
+</body>
+</html>

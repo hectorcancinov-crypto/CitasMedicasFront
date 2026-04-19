@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Información Profesional - ClinicApp</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="./CSS/Iniciod.css">
+    <style>
+        body { margin:0; background:#f4f6f9; font-family: 'Poppins', sans-serif; }
+        
+        /* SIDEBAR - Igual al que te funciona */
+        .sidebar { width:240px; height:100vh; background:#4db6ac; position:fixed; color:white; padding-top:20px; transition:0.3s; z-index:1000; left: 0; }
+        .sidebar.active { left: -240px; } /* Clase para ocultar/mostrar */
+        
+        .sidebar h4 { text-align:center; font-weight:bold; }
+        .sidebar a { display:block; color:white; padding:12px 20px; text-decoration:none; transition:0.3s; }
+        .sidebar a:hover, .sidebar a.active { background:#00838f; }
+        
+        /* CONTENIDO */
+        .content { margin-left:240px; padding:30px; transition:0.3s; }
+        .content.active { margin-left: 0; } /* Ajuste cuando el sidebar se mueve */
+
+        .topbar { display:flex; justify-content:space-between; align-items:center; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        /* BOTÓN HAMBURGUESA - Forzamos visibilidad */
+        .btn-menu { background: #4db6ac; border: none; color: white; font-size: 20px; cursor: pointer; padding: 5px 12px; border-radius: 5px; transition: 0.3s; display: block !important; }
+        .btn-menu:hover { background: #00838f; }
+
+        .notificacion { font-size:20px; cursor:pointer; background:#f4f6f9; padding:10px; border-radius:50%; transition: 0.3s; }
+        .notificacion:hover { background: #e0e0e0; }
+
+        .mensaje-noti { position:fixed; top:20px; right:20px; background:#4db6ac; color:white; padding:15px 20px; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.2); display:none; z-index:9999; }
+
+        @media (max-width:768px) {
+            .sidebar { left:-240px; }
+            .sidebar.active { left:0; }
+            .content { margin-left:0; }
+            .content.active { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+    <h4 class="text-center">ClinicApp</h4>
+    <hr>
+    <a href="inicio.html"><i class="fa fa-home"></i> Inicio</a>
+    <a href="Citas_Solicitadas.html"><i class="fa fa-calendar"></i> Citas</a>
+    <a href="AgragarHora.html"><i class="fa fa-clock"></i> Horarios</a>
+    <a href="Info_personal.html" class="active"><i class="fa fa-user-md"></i> Información</a>
+    <a href="PerfilDoc.html"><i class="fa fa-user"></i> Perfil</a>
+    <a href="../login.html" onclick="localStorage.clear()" class="text-danger"><i class="fa fa-sign-out-alt"></i> Cerrar sesión</a>
+</div>
+
+<div class="content" id="content">
+    <div class="topbar">
+        <div class="d-flex align-items-center gap-3">
+            <button id="btnMenu" class="btn-menu">
+                <i class="fa fa-bars"></i>
+            </button>
+            <h2 class="m-0" style="font-size: 1.5rem;">Información Profesional</h2>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <i class="fa fa-bell notificacion" id="campana"></i>
+            <span id="nombreDoctorDisplay" style="font-weight:600; color:#4db6ac;">Doctor</span>
+        </div>
+    </div>
+
+    <div id="mensajeNoti" class="mensaje-noti"></div>
+
+    <div class="card mt-4 p-4 border-0 shadow-sm">
+        <h5 class="mb-4"><i class="fa fa-briefcase-medical"></i> Credenciales Médicas</h5>
+        <form id="formProfesional" onsubmit="guardarInfo(event)">
+            <div class="mb-3">
+                <label class="form-label">Especialidad Médica</label>
+                <input type="text" id="especialidad" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Cédula Profesional</label>
+                <input type="text" id="cedula" class="form-control" required>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Teléfono</label>
+                    <input type="tel" id="telefono" class="form-control" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Correo</label>
+                    <input type="email" id="correo" class="form-control" required>
+                </div>
+                </div>
+        <button type="submit" class="btn btn-success w-100 mt-3 py-2">
+           Guardar Información 
+     </button> 
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    // 1. IMPORTANTE: Usamos id_doctor (el ID real de la tabla doctores)
+    const idDoctor = localStorage.getItem("id_doctor"); 
+    const apiBase = "https://clinicaapi-production.up.railway.app";
+    
+    // Variables para no perder datos que no están en los inputs de este formulario
+    let nombreDoc = "";
+    let edadDoc = 0;
+    let sexoDoc = "";
+
+    document.addEventListener("DOMContentLoaded", () => {
+        if (!idDoctor || idDoctor === "undefined") {
+            window.location.href = "../login.html";
+            return;
+        }
+        
+        cargarDatosDoctor();
+        
+        // --- BLOQUE DE LA CAMPANA (CORREGIDO) ---
+        const campana = document.getElementById("campana");
+        if (campana) {
+            campana.onclick = () => {
+                Swal.fire({ 
+                    title: 'Notificaciones', 
+                    text: 'Todo al día por ahora.', 
+                    icon: 'info', 
+                    timer: 1500, 
+                    showConfirmButton: false 
+                });
+            };
+        }
+
+        // Menú lateral
+        const btnMenu = document.getElementById("btnMenu");
+        if (btnMenu) {
+            btnMenu.onclick = () => {
+                document.getElementById("sidebar").classList.toggle("active");
+                document.getElementById("content").classList.toggle("active");
+            };
+        }
+    });
+
+    // Función GET: Ahora sí encontrará al doctor porque usa el ID correcto
+    async function cargarDatosDoctor() {
+        try {
+            const res = await fetch(`${apiBase}/doctores/${idDoctor}/perfil`);
+            if (res.ok) {
+                const d = await res.json();
+                
+                // Llenamos los inputs
+                document.getElementById("especialidad").value = d.especialidad || "";
+                document.getElementById("telefono").value = d.telefono || "";
+                document.getElementById("cedula").value = d.cedula || "";
+                document.getElementById("correo").value = d.correo || "";
+                
+                // Guardamos datos temporales para que el PUT no los mande vacíos
+                nombreDoc = d.nombre || "Doctor";
+                edadDoc = d.edad || 0;
+                sexoDoc = d.sexo || "M";
+
+                // Actualizamos el nombre en la interfaz
+                document.getElementById("nombreDoctorDisplay").innerText = "Dr. " + nombreDoc;
+            } else {
+                console.error("Error al cargar perfil: Doctor no encontrado");
+            }
+        } catch (e) { console.error("Error de conexión:", e); }
+    }
+
+    // Función PUT: Envía los datos exactos que espera tu DoctorRepositoryImpl
+    async function guardarInfo(e) {
+        if(e) e.preventDefault();
+        
+        const datos = {
+            id_doctor: parseInt(idDoctor), // Coincide con tu WHERE id_doctor = ?
+            nombre: nombreDoc, 
+            edad: edadDoc, 
+            sexo: sexoDoc,
+            especialidad: document.getElementById("especialidad").value,
+            telefono: document.getElementById("telefono").value,
+            cedula: document.getElementById("cedula").value,
+            correo: document.getElementById("correo").value,
+            biografia: "" // Se puede ampliar después
+        };
+
+        try {
+            const res = await fetch(`${apiBase}/doctores/${idDoctor}/perfil`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+            
+            if (res.ok) {
+                Swal.fire({ 
+                    icon: 'success', 
+                    title: '¡Perfil Actualizado!', 
+                    text: 'Los cambios se guardaron con exito',
+                    timer: 2000, 
+                    showConfirmButton: false 
+                });
+            } else {
+                const errorData = await res.json();
+                Swal.fire("Error", errorData.error || "No se pudo actualizar", "error");
+            }
+        } catch (error) { 
+            Swal.fire("Error", "El servidor no responde", "error"); 
+        }
+    }
+</script>
