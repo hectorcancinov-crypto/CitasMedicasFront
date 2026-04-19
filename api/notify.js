@@ -1,4 +1,4 @@
-import { db, messaging } from "./_firebase.js";
+import { getAdmin } from "./_firebase.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -11,6 +11,7 @@ export default async function handler(req, res) {
   if (!patientId) return res.status(400).json({ error: "patientId required" });
 
   try {
+    const { db, messaging } = getAdmin();
     const snap = await db.collection("patient_tokens").doc(String(patientId)).get();
     if (!snap.exists) return res.status(404).json({ error: "patient token not found" });
 

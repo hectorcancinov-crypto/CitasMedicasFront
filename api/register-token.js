@@ -1,4 +1,4 @@
-import { db, FieldValue } from "./_firebase.js";
+import { getAdmin } from "./_firebase.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -13,6 +13,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    const { db, FieldValue } = getAdmin();
     await db.collection("patient_tokens").doc(String(patientId)).set({
       fcmToken,
       updatedAt: FieldValue.serverTimestamp()

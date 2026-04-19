@@ -27,12 +27,15 @@ function parseServiceAccount() {
   return parsed;
 }
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(parseServiceAccount())
-  });
+export function getAdmin() {
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(parseServiceAccount())
+    });
+  }
+  return {
+    db: admin.firestore(),
+    messaging: admin.messaging(),
+    FieldValue: admin.firestore.FieldValue
+  };
 }
-
-export const db = admin.firestore();
-export const messaging = admin.messaging();
-export const FieldValue = admin.firestore.FieldValue;
