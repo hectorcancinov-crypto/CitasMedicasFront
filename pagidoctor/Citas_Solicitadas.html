@@ -191,21 +191,23 @@
             });
             if (res.ok) {
                 Swal.fire({ title: '¡Éxito!', icon: 'success', timer: 1000, showConfirmButton: false });
-                if (nuevoEstado === 'ACEPTADA' && idPaciente) {
+                const statusMap = { ACEPTADA: "accepted", RECHAZADA: "rejected" };
+                const status = statusMap[nuevoEstado];
+                if (status && idPaciente) {
                     const doctorName = document.getElementById("nombreDocDisplay").innerText.replace(/^Dr\.\s*/, "");
-                    notificarCitaAceptada(idPaciente, idCita, doctorName);
+                    notificarEstadoCita(idPaciente, idCita, doctorName, status);
                 }
                 cargarCitas();
             }
         } catch (error) { Swal.fire('Error', 'Servidor no disponible', 'error'); }
     }
 
-    async function notificarCitaAceptada(patientId, appointmentId, doctorName) {
+    async function notificarEstadoCita(patientId, appointmentId, doctorName, status) {
         try {
             const r = await fetch("/api/notify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ patientId, appointmentId, doctorName })
+                body: JSON.stringify({ patientId, appointmentId, doctorName, status })
             });
             const data = await r.json();
             if (!data.ok) console.error("notify failed:", data.error);
